@@ -43,6 +43,39 @@ Vagrant.configure("2") do |config|
     vbox.cpus = 2
   end
 
+  # the kernel that the base build uses is incopatible with SpectrumScale, I get the following error
+  # m1: [ FATAL ] m1.example.com: Pre requisite packages not found on m1.example.com
+  #   (Pre requisites: kernel-devel-3.10.0-1127.el7.x86_64, kernel-headers-3.10.0-1127.el7.x86_64).
+  #   Ensure this is resolved before proceeding with the install toolkit.
+  # Ideally we could just run:
+  # So here we remove the newer kernel-devel and kernel-headers and install the older versions specifically
+  # Since the old versions aren't in the yum repos we manually install them with rpm. And then reinstall gcc
+  # since it was uninstalled when we removed the old kernel
+  config.vm.provision "shell",
+  name:   "Remove installed kernel-devel and kernel-headers to prevent version missmatches",
+  inline: "
+    /usr/bin/yum remove -y\
+      kernel-devel\
+      kernel-headers\
+  "
+  config.vm.provision "shell",
+    name: "Install kernel-devel-3.10.0-1127.el7.x86_64.rpm",
+    inline: "sudo rpm -i http://linuxsoft.cern.ch/cern/centos/7/updates/x86_64/Packages/Packages/kernel-devel-3.10.0-1127.el7.x86_64.rpm --oldpackage"
+
+  config.vm.provision "shell",
+    name: "Install kernel-headers-3.10.0-1127.el7.x86_64.rpm",
+    inline: "sudo rpm -i http://linuxsoft.cern.ch/cern/centos/7/updates/x86_64/Packages/Packages/kernel-headers-3.10.0-1127.el7.x86_64.rpm --oldpackage"
+
+  # Install RPMs required by Spectrum Scale to build portability layer
+  config.vm.provision "shell",
+    name:   "Install RPMs required by Spectrum Scale to build portability layer",
+    inline: "
+      /usr/bin/yum install -y\
+        cpp\
+        gcc\
+        gcc-c++
+    "
+
   #
   # The single node cluster comprises one node only
   #
